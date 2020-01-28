@@ -1,0 +1,143 @@
+#!/bin/bash
+
+file_name="git-user"
+base_dir=$(cd `dirname $0`; pwd)
+file_path="$base_dir/$file_name"
+data_file="$base_dir/git-user.data"
+data_file_bak="$base_dir/git-user.data.bak"
+
+function show_help()
+{
+  echo "Usage: git-user <command> [<args>]"
+  echo ""
+  echo "Help command:"
+  echo "    -h    Show help document."
+  echo ""
+  echo "Useful command:"
+  echo "    -l    List all users. e.g. $> git-user -l"
+  echo "    -c    Clear all data. e.g. $> git-user -c"
+  echo "    -a    Add a new user in current env. $> git-user -a key:name:email"
+  echo "    -u    Use a user by key. e.g. $> git-user -u key"
+  echo "    -d    Delete user by key. e.g. $> git-user -d key"
+  echo ""
+  echo "Examples:"
+  echo "1. Add a new user:"
+  echo "    $> git-user -a key:name:email"
+  echo ""
+  echo "2. Set an user to git conifg:"
+  echo "    $> git-user -u <key>"
+  echo ""
+  echo "3. Delete an user:"
+  echo "    $> git-user -d <key>"
+  echo ""
+  echo "4. Show all users:"
+  echo "    $> git-user -l"
+  echo ""
+  echo "5. Clear all users:"
+  echo "    $> git-user -c"
+  echo ""
+}
+
+show_error()
+{
+  echo "Unkonwn argument! Please using '-h' to see the usage."
+}
+
+list_users()
+{
+  echo "All users: "
+  echo -e "[id]\t\t[user<email>]"
+  while read -r line; do
+    IFS=':'
+    read -ra info <<< "$line"
+    IFS=' '
+    echo -e "${info[0]}\t\t${info[1]}<${info[2]}>"
+  done < "$data_file"
+}
+
+clear_users()
+{
+  echo -n > $data_file
+  echo "Clear done."
+}
+
+add_user()
+{
+  local user_info=$1
+  IFS=':'
+  read -ra info <<< "$user_info"
+  IFS=' '
+  if [ ! -f "$data_file" ]; then
+    touch $data_file
+  fi
+  if [ "${info[0]}" -a "${info[1]}" -a "${info[2]}" ]; then
+    local found_user=`_find_user "${info[0]}"`
+    if [ -z "$found_user" ]; then
+      echo "$user_info" >> $data_file
+      echo -e "Added user: ${info[0]}\t\t${info[1]}<${info[2]}>"
+    else
+      echo -e "User id: ${info[0]} exist, please delete it first."
+    fi
+  else
+    echo "Please input correct info. e.g.: 'id:name:email'"
+  fi
+}
+
+use_user()
+{
+  local found_user=`_find_user "$1"`
+  if [ -n "$found_user" ]; then
+    IFS=':'
+    read -ra info <<< "$found_user"
+    IFS=' '
+    git config --unset-all user.name
+    git config --unset-all user.email
+    git config --add user.name "${info[1]}"
+    git config --add user.email "${info[2]}"
+    echo -e "Use user: ${info[0]}\t\t${info[1]}<${info[2]}>"
+  else
+    echo -e "User id: $1 exist, please delete it first."
+  fi
+}
+
+delete_user()
+{
+  local remove_id=$1
+  touch $data_file_bak
+  while read -r line; do
+    IFS=':'
+    read -ra info <<< "$line"
+    if [ "${info[0]}" = "$remove_id" ]; then
+      echo -e "Delete user: ${info[0]}\t\t${info[1]}<${info[2]}>"
+    else
+      echo "$line" >> $data_file_bak
+    fi
+    IFS=' '
+  done < "$data_file"
+  mv -f $data_file_bak $data_file
+}
+
+_find_user()
+{
+  local find_id=$1
+  while read -r line; do
+    IFS=':'
+    read -ra info <<< "$line"
+    if [ "${info[0]}" = "$find_id" ]; then
+      echo "$line"
+    fi
+    IFS=' '
+  done < "$data_file"
+}
+
+while getopts ":hlca:u:d:" opt; do
+  case $opt in
+    h) show_help && exit 0;;
+    l) list_users && exit 0;;
+    c) clear_users && exit 0;;
+    a) add_user "$OPTARG" exit 0;;
+    u) use_user "$OPTARG" exit 0;;
+    d) delete_user "$OPTARG" && exit 0;;
+    ?) show_error && exit 1;;
+  esac
+done
