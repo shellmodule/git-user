@@ -6,21 +6,19 @@ Manager user for git
 ### To install, clone the git repo:
 
 ```
-$ git clone git@github.com:shellmodule/git-user.git
+$ git clone git@github.com:xqproject/git-user.git
 ```
 
-### Two ways for install.
-
-* Add the bin directory to your path
+### How to install.
 
 ```
-export PATH=$PATH:$HOME/[where your checked out]/git-user/bin
+$ ./bin/install -i <install path>
 ```
 
-* Execute install command to install.
+### How to uninstall.
 
 ```
-$ bin/git-user -i <install path>
+$ ./bin/install -u <install path>
 ```
 
 ## Usage
